@@ -1,53 +1,57 @@
-# InterCommerce App - MVP E-commerce Robust
+# App - MVP Mercado_Ivan
 
-Este proyecto es un MVP de una aplicación de E-commerce nativa para Android, desarrollada con un enfoque en **alta ingeniería**, **resiliencia** y **escalabilidad**.
+Este proyecto representa un MVP robusto y escalable de una aplicación de E-commerce nativa para Android, desarrollada bajo estándares de nivel producción, con un enfoque total en la **resiliencia**, **rendimiento** y **localización**.
 
-## 🏗️ Arquitectura: Clean Architecture
+## 🏗️ Arquitectura: Clean Architecture + MVVM
 
-Se ha implementado **Clean Architecture** con una separación estricta en tres capas para garantizar que la lógica de negocio sea independiente de los frameworks, la UI y la base de datos:
+Se ha implementado una arquitectura desacoplada en capas para garantizar la mantenibilidad y facilidad de prueba:
 
-1.  **Capa de Dominio (Domain)**: Contiene las entidades de negocio (`Producto`, `ItemCarrito`) y los Casos de Uso (`GestionarCarritoUseCase`). Es código Kotlin puro, sin dependencias de Android, lo que facilita su testeo y reutilización.
-2.  **Capa de Datos (Data)**: Gestiona la persistencia local con **Room** y el consumo de la API de **DummyJSON** con **Retrofit**. Aquí se encuentran los repositorios que deciden la estrategia de obtención de datos.
-3.  **Capa de Presentación (Presentation)**: Desarrollada íntegramente con **Jetpack Compose** bajo una arquitectura reactiva. Utiliza **ViewModels** con **StateFlow** para gestionar el estado operacional de la vista.
+1.  **Capa de Dominio (Domain)**: 
+    *   Contiene la lógica de negocio pura en Kotlin.
+    *   **Entidades Inmutables**: `Producto` e `ItemCarrito` definidas con `val`.
+    *   **Casos de Uso**: `GestionarCarritoUseCase` centraliza los cálculos de IVA (19%), descuentos y totales.
+2.  **Capa de Datos (Data)**: 
+    *   **Offline-First**: Sincronización automática con **Room (SQLite)**.
+    *   **RemoteMediator**: Lógica avanzada para coordinar la red (**Retrofit**) y la base de datos local.
+    *   **Mapeadores Inteligentes**: Uso de `@SerialName` para traducir el contrato de la API (Inglés) al código de negocio (Español) sin romper la integridad.
+3.  **Capa de Presentación (Presentation)**: 
+    *   UI moderna y declarativa con **Jetpack Compose**.
+    *   Arquitectura reactiva utilizando **StateFlow** y **SharedFlow**.
+    *   **Navegación Type-Safe**: Paso de parámetros blindado por el compilador.
 
-## 💾 Persistencia y Resiliencia (Offline-First)
+## 💾 Persistencia y Resiliencia
 
-### Justificación de Room (SQLite)
-Se seleccionó **Room** como motor de persistencia por las siguientes razones:
-*   **Seguridad en Compilación**: Room valida las consultas SQL en tiempo de compilación, evitando errores en tiempo de ejecución.
-*   **Integración Nativa**: Es el estándar oficial de Google, lo que garantiza soporte a largo plazo y compatibilidad total con **Paging 3** y **Flow**.
-*   **Relacional**: Permite estructurar los productos y el carrito de forma relacional, ideal para el volumen transaccional de un catálogo.
+*   **Motor**: Room Database (SQLite). Se eligió por su seguridad en compilación e integración nativa con flujos de datos.
+*   **Seguridad de Datos**: Implementación de `fallbackToDestructiveMigration` para actualizaciones de esquema seguras.
+*   **Control de Tráfico**: Sistema de **"Cisterna de Skips"** en el `RemoteMediator` para evitar peticiones duplicadas y bucles infinitos de red, garantizando un consumo mínimo de datos y batería.
 
-### Estrategia de Mitigación de Pérdida de Datos
-Para garantizar que los datos sobrevivan a cierres de app o reinicios, se implementó:
-*   **RemoteMediator**: Actúa como un coordinador entre la red y la base de datos. Cada producto descargado se guarda inmediatamente en Room. Si la API falla, la app sirve los datos locales de forma transparente.
-*   **Persistencia Atómica**: El carrito se gestiona directamente en SQLite, asegurando que cada adición o eliminación sea persistente al instante.
+## ⚡ Rendimiento y UX
+
+*   **Scroll Infinito**: Implementado con **Paging 3** para una carga fluida de productos sin límites manuales.
+*   **Búsqueda en Tiempo Real**: Funcionalidad de búsqueda integrada con *Debounce* de 500ms y soporte offline automático.
+*   **Imágenes Optimizadas**: Uso de **Coil** con sistema de caché en disco/memoria y *placeholders* visuales elegantes.
+*   **Estabilidad de UI**: Uso de `@Immutable` y `remember` en Compose para reducir recomposiciones innecesarias y maximizar los FPS.
+*   **Feedback Háptico**: Vibración nativa al interactuar con acciones de conversión (agregar al carrito).
 
 ## 🚀 Cómo Ejecutar la App
 
-1.  Clonar el repositorio.
-2.  Abrir el proyecto en **Android Studio Jellyfish** (o superior).
-3.  Sincronizar Gradle.
-4.  Ejecutar en un emulador o dispositivo físico con **Android 11 (API 30)** o superior.
-
-## 🧪 Cómo Correr las Pruebas
-
-Para validar la lógica de negocio (especialmente los cálculos del carrito):
-```bash
-./gradlew test
-```
-Esto ejecutará la suite de pruebas unitarias implementadas con **JUnit** y **MockK**.
+1.  **Requisitos**: Android Studio Jellyfish+ y SDK 30+ (Android 11).
+2.  **Sincronización**: Realizar un *Gradle Sync*.
+3.  **Ejecución**: Compilar y ejecutar en emulador o dispositivo real.
+4.  **Pruebas**: 
+    ```bash
+    ./gradlew test
+    ```
 
 ## 🛠️ Stack Tecnológico
-*   **Lenguaje**: Kotlin (Inmutabilidad y Corrutinas).
-*   **UI**: Jetpack Compose con Type-Safe Navigation.
-*   **DI**: Dagger Hilt.
-*   **Red**: Retrofit + OkHttp (Interceptores de Logs).
-*   **Imágenes**: Coil (Caché en disco y memoria).
-*   **Paginación**: Paging 3 (Scroll infinito).
-*   **Localización**: 100% Español y Pesos Colombianos (COP).
+*   **Dagger Hilt**: Inyección de dependencias integral.
+*   **Retrofit + OkHttp**: Cliente de red con interceptores de logs y protocolos estables.
+*   **Kotlinx Serialization**: Deserialización segura y tolerante.
+*   **Jetpack Compose**: UI moderna con componentes de Material 3.
 
-## 📌 Supuestos y Limitaciones
-*   **Tasa de Cambio**: Se asume una tasa de conversión fija para los precios de la API a COP para fines demostrativos.
-*   **Vibración**: Requiere un dispositivo físico con motor háptico para apreciarse plenamente.
-*   **Búsqueda**: La búsqueda offline se limita a los productos que ya han sido precargados en la base de datos local.
+## 📌 Supuestos Técnicos
+*   **Moneda**: Se aplica una tasa de conversión base para mostrar precios realistas en **Pesos Colombianos (COP)**.
+*   **Idioma**: El código y la interfaz están localizados 100% al **Español**.
+*   **Estrategia Offline**: La app prioriza la visualización de datos locales en ausencia de red para evitar interrupciones en la experiencia de compra.
+
+---
