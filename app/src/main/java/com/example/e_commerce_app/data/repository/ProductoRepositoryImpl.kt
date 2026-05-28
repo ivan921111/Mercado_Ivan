@@ -12,25 +12,33 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class ProductoRepositoryImpl @Inject constructor(
     private val api: ProductoApi,
     private val db: EcommerceDatabase
 ) : ProductoRepository {
 
     @OptIn(ExperimentalPagingApi::class)
-    override fun obtenerProductosPaginados(): Flow<PagingData<Producto>> {
+    override fun obtenerProductosPaginados(consulta: String): Flow<PagingData<Producto>> {
         return Pager(
             config = PagingConfig(
-                pageSize = 10,
-                prefetchDistance = 2,
+                pageSize = 20,
+                prefetchDistance = 5,
                 enablePlaceholders = false
             ),
-            remoteMediator = ProductoRemoteMediator(db, api),
-            pagingSourceFactory = { db.dao.getAllProductsPaged() }
+            remoteMediator = ProductoRemoteMediator(db, api, consulta),
+            pagingSourceFactory = { 
+                if (consulta.isBlank()) {
+                    db.dao.getAllProductsPaged()
+                } else {
+                    db.dao.buscarProductosPaged(consulta)
+                }
+            }
         ).flow.map { pagingData ->
             pagingData.map { it.toDomain() }
-        }.flowOn(Dispatchers.IO) // Aseguramos que la transformación y el flujo corran en hilos de fondo
+        }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun obtenerProductoPorId(id: Int): Producto? = withContext(Dispatchers.IO) {
@@ -41,15 +49,6 @@ class ProductoRepositoryImpl @Inject constructor(
             api.getProductById(id).toDomain()
         } catch (e: Exception) {
             null
-        }
-    }
-
-    override suspend fun buscarProductos(query: String): List<Producto> = withContext(Dispatchers.IO) {
-        try {
-            val respuesta = api.searchProducts(query)
-            respuesta.productos.map { it.toDomain() }
-        } catch (e: Exception) {
-            db.dao.buscarProductos(query).map { it.toDomain() }
         }
     }
 }

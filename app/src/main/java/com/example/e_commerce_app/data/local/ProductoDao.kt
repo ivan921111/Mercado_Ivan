@@ -20,6 +20,9 @@ interface ProductoDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProducts(products: List<ProductoEntity>)
 
+    @Query("SELECT * FROM productos WHERE titulo LIKE '%' || :query || '%'")
+    fun buscarProductosPaged(query: String): androidx.paging.PagingSource<Int, ProductoEntity>
+
     @Query("SELECT * FROM productos WHERE id = :id")
     suspend fun getProductById(id: Int): ProductoEntity?
 

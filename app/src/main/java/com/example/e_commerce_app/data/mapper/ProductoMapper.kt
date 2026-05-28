@@ -6,11 +6,18 @@ import com.example.e_commerce_app.domain.model.Producto
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+// Instancia única configurada para evitar fallos de llaves desconocidas o nulos
+private val jsonConfig = Json { 
+    ignoreUnknownKeys = true 
+    isLenient = true
+    encodeDefaults = true
+}
+
 fun ProductoDto.toEntity(): ProductoEntity {
     return ProductoEntity(
         id = id,
         titulo = TraductorHelper.traducir(tituloOriginal),
-        descripcion = descripcionOriginal, // Mantenemos la descripción original
+        descripcion = descripcionOriginal,
         precio = precioOriginal,
         porcentajeDescuento = porcentajeDescuento,
         calificacion = calificacion,
@@ -18,7 +25,7 @@ fun ProductoDto.toEntity(): ProductoEntity {
         marca = marca,
         categoria = TraductorHelper.traducir(categoriaOriginal),
         miniatura = miniatura,
-        imagenesJson = Json.encodeToString(imagenes)
+        imagenesJson = jsonConfig.encodeToString(imagenes)
     )
 }
 
@@ -34,7 +41,11 @@ fun ProductoEntity.toDomain(): Producto {
         marca = marca,
         categoria = categoria,
         miniatura = miniatura,
-        imagenes = try { Json.decodeFromString(imagenesJson) } catch (e: Exception) { emptyList() }
+        imagenes = try { 
+            jsonConfig.decodeFromString(imagenesJson) 
+        } catch (e: Exception) { 
+            emptyList() 
+        }
     )
 }
 
@@ -42,7 +53,7 @@ fun ProductoDto.toDomain(): Producto {
     return Producto(
         id = id,
         nombre = TraductorHelper.traducir(tituloOriginal),
-        descripcion = descripcionOriginal, // Mantenemos la descripción original
+        descripcion = descripcionOriginal,
         precio = precioOriginal,
         porcentajeDescuento = porcentajeDescuento,
         calificacion = calificacion,

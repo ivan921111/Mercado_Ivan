@@ -13,42 +13,52 @@ import com.example.e_commerce_app.data.remote.ProductoApi
 @OptIn(ExperimentalPagingApi::class)
 class ProductoRemoteMediator(
     private val db: EcommerceDatabase,
-    private val api: ProductoApi
+    private val api: ProductoApi,
+    private val consulta: String = "" // Nueva variable de búsqueda
 ) : RemoteMediator<Int, ProductoEntity>() {
+
+    private val skipsCargados = mutableSetOf<Int>()
 
     override suspend fun load(
         loadType: LoadType,
         state: PagingState<Int, ProductoEntity>
     ): MediatorResult {
         return try {
-            val loadKey = when (loadType) {
+            val skip = when (loadType) {
                 LoadType.REFRESH -> 0
                 LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
                 LoadType.APPEND -> {
-                    val lastItem = state.lastItemOrNull()
-                    if (lastItem == null) {
-                        0
-                    } else {
-                        state.pages.sumOf { it.data.size }
-                    }
+                    val count = state.pages.sumOf { it.data.size }
+                    if (count == 0) return MediatorResult.Success(endOfPaginationReached = false)
+                    count
                 }
             }
 
-            val respuesta = api.getProducts(
-                limit = state.config.pageSize,
-                skip = loadKey
-            )
+            if (skipsCargados.contains(skip) && loadType != LoadType.REFRESH) {
+                return MediatorResult.Success(endOfPaginationReached = false)
+            }
+
+            // LÓGICA DE BÚSQUEDA DINÁMICA
+            val respuesta = if (consulta.isBlank()) {
+                api.getProducts(limit = state.config.pageSize, skip = skip)
+            } else {
+                api.searchProducts(query = consulta) // DummyJSON search no pagina igual, pero la API lo soporta
+            }
 
             db.withTransaction {
                 if (loadType == LoadType.REFRESH) {
                     db.dao.clearAllProducts()
+                    skipsCargados.clear()
                 }
+                
                 val entidades = respuesta.productos.map { it.toEntity() }
                 db.dao.insertProducts(entidades)
+                skipsCargados.add(skip)
             }
 
             MediatorResult.Success(
-                endOfPaginationReached = respuesta.productos.isEmpty()
+                // Si hay una búsqueda activa, DummyJSON suele mandar todo de golpe
+                endOfPaginationReached = respuesta.productos.isEmpty() || consulta.isNotBlank()
             )
         } catch (e: Exception) {
             MediatorResult.Error(e)
